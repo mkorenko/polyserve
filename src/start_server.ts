@@ -401,6 +401,22 @@ export function getApp(options: ServerOptions): express.Express {
     send(req, filePath, {root: root, index: entrypoint})
         .on('error',
             (error: send.SendError) => {
+              if ((error).status === 404) {
+                 const resolvedPath = path.join(process.cwd(), filePath);
+
+                 const patternsToCheck = [
+                   (filePath:string) => `${filePath}index.js`,
+                   (filePath:string) => `${filePath}.js`,
+                 ];
+
+                 const match = patternsToCheck.find((p) => fs.existsSync(p(resolvedPath)));
+
+                 if (match) {
+                   send(req, match(filePath), {root: root}).pipe(res);
+                   return;
+                 }
+              }
+            
               if ((error).status === 404 && !filePathRegex.test(filePath)) {
                 // The static file handling middleware failed to find a file on
                 // disk. Serve the entry point HTML file instead of a 404.
